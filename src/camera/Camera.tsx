@@ -1,8 +1,4 @@
-import React, {useRef} from "react";
-import { useGlobalContext } from "../GlobalContext";
-import Webcam from "react-webcam";
-import { getVideoConstraints, setupCanvasSize, renderVideoToCanvas, detectDocument } from "./CameraUtils";
-import { animationManager } from "./AnimationManger";
+import { captureDocument } from './CaptureDocument';
 
 const Camera = (config: any) => {
 
@@ -15,20 +11,55 @@ const Camera = (config: any) => {
   const videoConstraints = getVideoConstraints();
 
   const initialiseCanvas = () => {
-    setupCanvasSize(videoRef, canvasRef, config);
+    setupCanvasSize(videoRef, canvasRef, config, updateGuidancePoints);
   };
 
   const renderVideo = () => {
-    renderVideoToCanvas(videoRef, canvasRef, config, globalData.autoCapture.lastDetectedPoints);
+    renderVideoToCanvas(
+      videoRef,
+      canvasRef,
+      config,
+      globalData.autoCapture.guidancePoints,
+      globalData.autoCapture.lastDetectedPoints,
+    );
   };
 
   const runDetection = () => {
     detectDocument(videoRef, canvasRef, config, updatePointDetected);
   };
 
+  const runCapturing = () => {
+    captureDocument(
+      globalData.autoCapture.guidancePoints,
+      globalData.autoCapture.lastDetectedPoints,
+      globalData.autoCapture.isAreaValid,
+      globalData.autoCapture.isPositionValid,
+      updateIsValidArea,
+      updateIsValidPosition,
+    );
+  };
+
   const updatePointDetected = (points: any) => {
     const globalDataUpdate = globalData;
     globalDataUpdate.autoCapture.lastDetectedPoints = points;
+    setGlobalData(globalDataUpdate);
+  };
+
+  const updateGuidancePoints = (points: any) => {
+    const globalDataUpdate = globalData;
+    globalDataUpdate.autoCapture.guidancePoints = points;
+    setGlobalData(globalDataUpdate);
+  };
+
+  const updateIsValidArea = (isValid: boolean) => {
+    const globalDataUpdate = globalData;
+    globalDataUpdate.autoCapture.isAreaValid = isValid;
+    setGlobalData(globalDataUpdate);
+  };
+
+  const updateIsValidPosition = (isValid: boolean) => {
+    const globalDataUpdate = globalData;
+    globalDataUpdate.autoCapture.isPositionValid = isValid;
     setGlobalData(globalDataUpdate);
   };
 
@@ -38,6 +69,7 @@ const Camera = (config: any) => {
       initialiseCanvas();
       animationManager.registerTask(renderVideo, 60);
       animationManager.registerTask(runDetection, 10);
+      animationManager.registerTask(runCapturing, 2);
     }, 2000);
   }
 

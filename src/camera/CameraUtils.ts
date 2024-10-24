@@ -18,17 +18,25 @@ export const getVideoConstraints = () => {
     return videoConstraints;
 }
 
-export const setupCanvasSize = (videoRef: any, canvasRef: any, config: any) => {
+export const setupCanvasSize = (
+  videoRef: any,
+  canvasRef: any,
+  config: any,
+  updateGuidancePoints: any,
+) => {
     const video = videoRef?.current?.video;
     const canvas = canvasRef.current;
     canvas.width = video.videoWidth;
     canvas.height = video.videoHeight;
-}
+
+  updateGuidancePoints(getGuidancePoints(config, canvas.width, canvas.height));
+};
 
 export const renderVideoToCanvas = (
   videoRef: any,
   canvasRef: any,
   config: any,
+  guidancePoints: cv.Point[],
   lastDetectedPoints: cv.Point[],
 ) => {
     const canv = videoRef?.current?.getCanvas();
@@ -39,18 +47,7 @@ export const renderVideoToCanvas = (
 
         const img = cv.imread(canvasRef.current);
 
-        const boxWidth = Math.round(canv.width * (config.documentWidth / 100));
-        const boxHeight = Math.round(canv.height * (config.documentHeight / 100));
-        let topLeftPoints = { x: canv.width / 2 - boxWidth / 4, y: canv.height / 2 - boxHeight / 2};
-        let bottomRightPoints = { x: canv.width / 2 + boxWidth / 4, y: canv.height / 2 + boxHeight / 2};
-        if(isMobile) {
-            topLeftPoints = { x: canv.width / 2 - boxWidth / 2, y: canv.height / 2 - boxHeight / 2};
-            bottomRightPoints = { x: canv.width / 2 + boxWidth / 2, y: canv.height / 2 + boxHeight / 2};
-        }
-
-
-        const white = [255, 255, 255, 255]; // white
-        cv.rectangle(img, topLeftPoints, bottomRightPoints, white, 2);
+    drawGuidanceFrame(img, guidancePoints);
 
         if (lastDetectedPoints && config.debug) {
       drawDebugContour(img, lastDetectedPoints);
@@ -103,7 +100,7 @@ export const detectDocument = (videoRef: any, canvasRef: any, config: any, updat
     cv.CHAIN_APPROX_SIMPLE,
   );
 
-  const minArea = ((video.height / 2) * video.width) / 2;
+  const minArea = ((video.height / 2) * video.width) / 4;
   let largestContour = findBiggestContour(contoursVec, minArea);
   let largestContourPoints = getCornerPoints(largestContour);
 
@@ -239,4 +236,37 @@ export const getCornerPoints = (contour: any) => {
   points.push(new cv.Point(bottomRightPoint?.x, bottomRightPoint?.y));
   points.push(new cv.Point(bottomLeftPoint?.x, bottomLeftPoint?.y));
   return points;
+};
+
+const getGuidancePoints = (config: any, width: number, height: number) => {
+  const boxWidth = Math.round(width * (config.documentWidth / 100));
+  const boxHeight = Math.round(height * (config.documentHeight / 100));
+
+  const widthFactor = isMobile ? boxWidth / 2 : boxWidth / 4;
+
+  const heightFactor = boxHeight / 2;
+
+  const topLeft = new cv.Point(
+    width / 2 - widthFactor,
+    height / 2 - heightFactor,
+  );
+  const topRight = new cv.Point(
+    width / 2 + widthFactor,
+    height / 2 - heightFactor,
+  );
+  const bottomLeft = new cv.Point(
+    width / 2 - widthFactor,
+    height / 2 + heightFactor,
+  );
+  const bottomRight = new cv.Point(
+    width / 2 + widthFactor,
+    height / 2 + heightFactor,
+  );
+
+  return [topLeft, topRight, bottomRight, bottomLeft];
+};
+
+const drawGuidanceFrame = (canvas: cv.Mat, points: cv.Point[]) => {
+  const white = [255, 255, 255, 255];
+  cv.rectangle(canvas, points[0], points[2], white, 2);
 };
