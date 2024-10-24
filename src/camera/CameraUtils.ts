@@ -162,7 +162,6 @@ const preprocessImage = (source: cv.Mat, output: cv.Mat = source) => {
     3,
     Math.floor(Math.min(source.rows, source.cols) / 100),
   );
-  console.log(kernelSize);
   cv.GaussianBlur(source, output, new cv.Size(kernelSize, kernelSize), 0, 0);
 
   // Apply canny edge
