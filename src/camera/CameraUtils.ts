@@ -25,7 +25,12 @@ export const setupCanvasSize = (videoRef: any, canvasRef: any, config: any) => {
     canvas.height = video.videoHeight;
 }
 
-export const renderVideoToCanvas = (videoRef: any, canvasRef: any, config: any, lastDetectedPoints: any) => {
+export const renderVideoToCanvas = (
+  videoRef: any,
+  canvasRef: any,
+  config: any,
+  lastDetectedPoints: cv.Point[],
+) => {
     const canv = videoRef?.current?.getCanvas();
     if (canv) {
         const canvas = canvasRef.current;
@@ -48,14 +53,33 @@ export const renderVideoToCanvas = (videoRef: any, canvasRef: any, config: any, 
         cv.rectangle(img, topLeftPoints, bottomRightPoints, white, 2);
 
         if (lastDetectedPoints && config.debug) {
-            const colorDebugRed = [255, 0, 0, 255]; // red
-            cv.rectangle(img, lastDetectedPoints[0], lastDetectedPoints[2], colorDebugRed, 2);
+      drawDebugContour(img, lastDetectedPoints);
         }
 
         cv.imshow(canvasRef.current, img);
         img.delete();
     }
+};
 
+const drawDebugContour = (input: cv.Mat, points: cv.Point[]) => {
+  let contour = new cv.MatVector();
+  let pointArray = cv.matFromArray(
+    points.length,
+    1,
+    cv.CV_32SC2,
+    points.flatMap((p) => [p.x, p.y]),
+  );
+
+  contour.push_back(pointArray);
+
+  const isClosed = true;
+  const color = new cv.Scalar(255, 0, 0, 255);
+  const thickness = 2;
+
+  cv.polylines(input, contour, isClosed, color, thickness);
+
+  pointArray.delete();
+  contour.delete();
 };
 
 export const detectDocument = (videoRef: any, canvasRef: any, config: any, updatePointDetected: any) => {
@@ -169,7 +193,7 @@ const calculateIntensityThresholds = (
 export const getCornerPoints = (contour: any) => {
   if (!contour) return null;
 
-    let points = [];
+  let points: cv.Point[] = [];
     let rect = cv.minAreaRect(contour);
     const center = rect.center
 
@@ -210,9 +234,10 @@ export const getCornerPoints = (contour: any) => {
         }
         }
     }
-    points.push(topLeftPoint)
-    points.push(topRightPoint)
-    points.push(bottomRightPoint)
-    points.push(bottomLeftPoint)
-    return points
+
+  points.push(new cv.Point(topLeftPoint?.x, topLeftPoint?.y));
+  points.push(new cv.Point(topRightPoint?.x, topRightPoint?.y));
+  points.push(new cv.Point(bottomRightPoint?.x, bottomRightPoint?.y));
+  points.push(new cv.Point(bottomLeftPoint?.x, bottomLeftPoint?.y));
+  return points;
 };
