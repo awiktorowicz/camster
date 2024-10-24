@@ -67,61 +67,108 @@ export const detectDocument = (videoRef: any, canvasRef: any, config: any, updat
     const src = new cv.Mat(video.height, video.width, cv.CV_8UC4);
     cap.read(src);
 
+  preprocessImage(src);
 
-    const gray = new cv.Mat();
-    cv.cvtColor(src, gray, cv.COLOR_RGBA2GRAY);
-    const blur = new cv.Mat();
-    cv.GaussianBlur(gray, blur, new cv.Size(5, 5), 0, 0, cv.BORDER_DEFAULT);
-    cv.Canny(blur, blur, 50, 150);
-    const thresh = new cv.Mat();
-    cv.threshold(blur, thresh, 0, 255, cv.THRESH_BINARY + cv.THRESH_OTSU);
-    let contours = new cv.MatVector();
+  let contoursVec = new cv.MatVector();
     let hierarchy = new cv.Mat();
-
     cv.findContours(
-      thresh,
-      contours,
+    src,
+    contoursVec,
       hierarchy,
-      cv.RETR_CCOMP,
-      cv.CHAIN_APPROX_SIMPLE
-    );
+    cv.RETR_EXTERNAL,
+    cv.CHAIN_APPROX_SIMPLE,
+  );
 
-    let points: any = [];
+  const minArea = ((video.height / 2) * video.width) / 2;
+  let largestContour = findBiggestContour(contoursVec, minArea);
+  let largestContourPoints = getCornerPoints(largestContour);
 
-    if (contours.size()) {
-        let maxArea = 1000
-        let maxContourIndex = -1
-        for (let i = 0; i < contours.size(); ++i) {
-            let contourArea = cv.contourArea(contours.get(i));
-            if (contourArea > maxArea) {
-            maxContourIndex = i
-            }
-        }
+  updatePointDetected(largestContourPoints);
 
-        if (maxContourIndex >= 0) {
-            const maxContour = contours.get(maxContourIndex);
-            const maxContourArea = cv.contourArea(maxContour);
-            if (maxContourArea > maxArea) {
-                points = getCornerPoints(maxContour);
-            }
-        }
+  src.delete();
+  hierarchy.delete();
+  contoursVec.delete();
+};
+
+const isQuadrilateral = (contour: cv.Mat | null) => {
+  return contour && contour.rows === 4;
+};
+
+const findBiggestContour = (
+  contoursVec: cv.MatVector,
+  minAreaThreshold: number,
+) => {
+  let maxArea = 1000;
+  let largestContour = null;
+
+  for (let i = 0; i < contoursVec.size(); ++i) {
+    let contour = contoursVec.get(i);
+    let area = cv.contourArea(contour);
+
+    if (area < minAreaThreshold) {
+      contour.delete();
+      continue;
     }
 
-    src.delete();
-    gray.delete();
-    blur.delete();
-    thresh.delete();
-    contours.delete();
-    hierarchy.delete();
+    let peri = cv.arcLength(contour, true);
+    let approx = new cv.Mat();
+    cv.approxPolyDP(contour, approx, 0.02 * peri, true);
 
-    if (points[0] && points[2]) {
-        updatePointDetected(points);
+    if (area > maxArea && isQuadrilateral(approx)) {
+      if (largestContour) largestContour.delete();
+      largestContour = approx;
+      maxArea = area;
+    } else {
+      approx.delete();
     }
-    points = [];
 
+    contour.delete();
+  }
+
+  return largestContour;
+};
+
+// Note the source is passed by ref
+const preprocessImage = (source: cv.Mat, output: cv.Mat = source) => {
+  // Convert to grayscale
+  cv.cvtColor(source, output, cv.COLOR_RGB2GRAY);
+
+  // Apply gaussian blur
+  let kernelSize = Math.max(
+    3,
+    Math.floor(Math.min(source.rows, source.cols) / 100),
+  );
+  console.log(kernelSize);
+  cv.GaussianBlur(source, output, new cv.Size(kernelSize, kernelSize), 0, 0);
+
+  // Apply canny edge
+  let intensityThresholds = calculateIntensityThresholds(source);
+  cv.Canny(source, output, intensityThresholds[0], intensityThresholds[1]);
+
+  // Apply morphology closing
+  let morphKernel = cv.getStructuringElement(
+    cv.MORPH_ELLIPSE,
+    new cv.Size(5, 5),
+  );
+  cv.morphologyEx(source, output, cv.MORPH_CLOSE, morphKernel);
+};
+
+// Calculates intensity thresholds required for canny filter
+const calculateIntensityThresholds = (
+  canvas: cv.Mat,
+  lowerScalar: number = 0.66,
+  upperScalar: number = 1.33,
+) => {
+  let meanIntensity = cv.mean(canvas)[0];
+  let lowerThreshold = lowerScalar * meanIntensity;
+  let upperThreshold = upperScalar * meanIntensity;
+
+  return [lowerThreshold, upperThreshold];
 };
 
 export const getCornerPoints = (contour: any) => {
+  if (!contour) return null;
+
     let points = [];
     let rect = cv.minAreaRect(contour);
     const center = rect.center
