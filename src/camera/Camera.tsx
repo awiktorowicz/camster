@@ -1,3 +1,13 @@
+import React, { useRef } from 'react';
+import Webcam from 'react-webcam';
+import { useGlobalContext } from '../GlobalContext';
+import { animationManager } from './AnimationManger';
+import {
+  detectDocument,
+  getVideoConstraints,
+  renderVideoToCanvas,
+  setupCanvasSize,
+} from './CameraUtils';
 import { captureDocument } from './CaptureDocument';
 
 const Camera = (config: any) => {
