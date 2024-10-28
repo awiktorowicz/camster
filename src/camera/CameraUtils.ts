@@ -21,6 +21,7 @@ export const getVideoConstraints = () => {
 export const setupCanvasSize = (
   videoRef: any,
   canvasRef: any,
+  canvasWrapperRef: any,
   config: any,
   updateGuidancePoints: any,
 ) => {
@@ -28,6 +29,9 @@ export const setupCanvasSize = (
     const canvas = canvasRef.current;
     canvas.width = video.videoWidth;
     canvas.height = video.videoHeight;
+    const canvasWrapper = canvasWrapperRef.current;
+    canvasWrapper.style.width = `${video.videoWidth}px`;
+    canvasWrapper.style.height = `${video.videoHeight}px`;
 
   updateGuidancePoints(getGuidancePoints(config, canvas.width, canvas.height));
 };
