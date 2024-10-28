@@ -18,14 +18,27 @@ export const getVideoConstraints = () => {
     return videoConstraints;
 }
 
-export const setupCanvasSize = (videoRef: any, canvasRef: any, config: any) => {
+export const setupCanvasSize = (
+  videoRef: any,
+  canvasRef: any,
+  config: any,
+  updateGuidancePoints: any,
+) => {
     const video = videoRef?.current?.video;
     const canvas = canvasRef.current;
     canvas.width = video.videoWidth;
     canvas.height = video.videoHeight;
-}
 
-export const renderVideoToCanvas = (videoRef: any, canvasRef: any, config: any, lastDetectedPoints: any) => {
+  updateGuidancePoints(getGuidancePoints(config, canvas.width, canvas.height));
+};
+
+export const renderVideoToCanvas = (
+  videoRef: any,
+  canvasRef: any,
+  config: any,
+  guidancePoints: cv.Point[],
+  lastDetectedPoints: cv.Point[],
+) => {
     const canv = videoRef?.current?.getCanvas();
     if (canv) {
         const canvas = canvasRef.current;
@@ -34,28 +47,36 @@ export const renderVideoToCanvas = (videoRef: any, canvasRef: any, config: any, 
 
         const img = cv.imread(canvasRef.current);
 
-        const boxWidth = Math.round(canv.width * (config.documentWidth / 100));
-        const boxHeight = Math.round(canv.height * (config.documentHeight / 100));
-        let topLeftPoints = { x: canv.width / 2 - boxWidth / 4, y: canv.height / 2 - boxHeight / 2};
-        let bottomRightPoints = { x: canv.width / 2 + boxWidth / 4, y: canv.height / 2 + boxHeight / 2};
-        if(isMobile) {
-            topLeftPoints = { x: canv.width / 2 - boxWidth / 2, y: canv.height / 2 - boxHeight / 2};
-            bottomRightPoints = { x: canv.width / 2 + boxWidth / 2, y: canv.height / 2 + boxHeight / 2};
-        }
-
-
-        const white = [255, 255, 255, 255]; // white
-        cv.rectangle(img, topLeftPoints, bottomRightPoints, white, 2);
+    drawGuidanceFrame(img, guidancePoints);
 
         if (lastDetectedPoints && config.debug) {
-            const colorDebugRed = [255, 0, 0, 255]; // red
-            cv.rectangle(img, lastDetectedPoints[0], lastDetectedPoints[2], colorDebugRed, 2);
+      drawDebugContour(img, lastDetectedPoints);
         }
 
         cv.imshow(canvasRef.current, img);
         img.delete();
     }
+};
 
+const drawDebugContour = (input: cv.Mat, points: cv.Point[]) => {
+  let contour = new cv.MatVector();
+  let pointArray = cv.matFromArray(
+    points.length,
+    1,
+    cv.CV_32SC2,
+    points.flatMap((p) => [p.x, p.y]),
+  );
+
+  contour.push_back(pointArray);
+
+  const isClosed = true;
+  const color = new cv.Scalar(255, 0, 0, 255);
+  const thickness = 2;
+
+  cv.polylines(input, contour, isClosed, color, thickness);
+
+  pointArray.delete();
+  contour.delete();
 };
 
 export const detectDocument = (videoRef: any, canvasRef: any, config: any, updatePointDetected: any) => {
@@ -67,62 +88,108 @@ export const detectDocument = (videoRef: any, canvasRef: any, config: any, updat
     const src = new cv.Mat(video.height, video.width, cv.CV_8UC4);
     cap.read(src);
 
+  preprocessImage(src);
 
-    const gray = new cv.Mat();
-    cv.cvtColor(src, gray, cv.COLOR_RGBA2GRAY);
-    const blur = new cv.Mat();
-    cv.GaussianBlur(gray, blur, new cv.Size(5, 5), 0, 0, cv.BORDER_DEFAULT);
-    cv.Canny(blur, blur, 50, 150);
-    const thresh = new cv.Mat();
-    cv.threshold(blur, thresh, 0, 255, cv.THRESH_BINARY + cv.THRESH_OTSU);
-    let contours = new cv.MatVector();
+  let contoursVec = new cv.MatVector();
     let hierarchy = new cv.Mat();
-
     cv.findContours(
-      thresh,
-      contours,
+    src,
+    contoursVec,
       hierarchy,
-      cv.RETR_CCOMP,
-      cv.CHAIN_APPROX_SIMPLE
-    );
+    cv.RETR_EXTERNAL,
+    cv.CHAIN_APPROX_SIMPLE,
+  );
 
-    let points: any = [];
+  const minArea = ((video.height / 2) * video.width) / 4;
+  let largestContour = findBiggestContour(contoursVec, minArea);
+  let largestContourPoints = getCornerPoints(largestContour);
 
-    if (contours.size()) {
-        let maxArea = 1000
-        let maxContourIndex = -1
-        for (let i = 0; i < contours.size(); ++i) {
-            let contourArea = cv.contourArea(contours.get(i));
-            if (contourArea > maxArea) {
-            maxContourIndex = i
-            }
-        }
+  updatePointDetected(largestContourPoints);
 
-        if (maxContourIndex >= 0) {
-            const maxContour = contours.get(maxContourIndex);
-            const maxContourArea = cv.contourArea(maxContour);
-            if (maxContourArea > maxArea) {
-                points = getCornerPoints(maxContour);
-            }
-        }
+  src.delete();
+  hierarchy.delete();
+  contoursVec.delete();
+};
+
+const isQuadrilateral = (contour: cv.Mat | null) => {
+  return contour && contour.rows === 4;
+};
+
+const findBiggestContour = (
+  contoursVec: cv.MatVector,
+  minAreaThreshold: number,
+) => {
+  let maxArea = 1000;
+  let largestContour = null;
+
+  for (let i = 0; i < contoursVec.size(); ++i) {
+    let contour = contoursVec.get(i);
+    let area = cv.contourArea(contour);
+
+    if (area < minAreaThreshold) {
+      contour.delete();
+      continue;
     }
 
-    src.delete();
-    gray.delete();
-    blur.delete();
-    thresh.delete();
-    contours.delete();
-    hierarchy.delete();
+    let peri = cv.arcLength(contour, true);
+    let approx = new cv.Mat();
+    cv.approxPolyDP(contour, approx, 0.02 * peri, true);
 
-    if (points[0] && points[2]) {
-        updatePointDetected(points);
+    if (area > maxArea && isQuadrilateral(approx)) {
+      if (largestContour) largestContour.delete();
+      largestContour = approx;
+      maxArea = area;
+    } else {
+      approx.delete();
     }
-    points = [];
 
+    contour.delete();
+  }
+
+  return largestContour;
+};
+
+// Note the source is passed by ref
+const preprocessImage = (source: cv.Mat, output: cv.Mat = source) => {
+  // Convert to grayscale
+  cv.cvtColor(source, output, cv.COLOR_RGB2GRAY);
+
+  // Apply gaussian blur
+  let kernelSize = Math.max(
+    3,
+    Math.floor(Math.min(source.rows, source.cols) / 100),
+  );
+  cv.GaussianBlur(source, output, new cv.Size(kernelSize, kernelSize), 0, 0);
+
+  // Apply canny edge
+  let intensityThresholds = calculateIntensityThresholds(source);
+  cv.Canny(source, output, intensityThresholds[0], intensityThresholds[1]);
+
+  // Apply morphology closing
+  let morphKernel = cv.getStructuringElement(
+    cv.MORPH_ELLIPSE,
+    new cv.Size(5, 5),
+  );
+  cv.morphologyEx(source, output, cv.MORPH_CLOSE, morphKernel);
+};
+
+// Calculates intensity thresholds required for canny filter
+const calculateIntensityThresholds = (
+  canvas: cv.Mat,
+  lowerScalar: number = 0.66,
+  upperScalar: number = 1.33,
+) => {
+  let meanIntensity = cv.mean(canvas)[0];
+  let lowerThreshold = lowerScalar * meanIntensity;
+  let upperThreshold = upperScalar * meanIntensity;
+
+  return [lowerThreshold, upperThreshold];
 };
 
 export const getCornerPoints = (contour: any) => {
-    let points = [];
+  if (!contour) return null;
+
+  let points: cv.Point[] = [];
     let rect = cv.minAreaRect(contour);
     const center = rect.center
 
@@ -163,9 +230,43 @@ export const getCornerPoints = (contour: any) => {
         }
         }
     }
-    points.push(topLeftPoint)
-    points.push(topRightPoint)
-    points.push(bottomRightPoint)
-    points.push(bottomLeftPoint)
-    return points
+
+  points.push(new cv.Point(topLeftPoint?.x, topLeftPoint?.y));
+  points.push(new cv.Point(topRightPoint?.x, topRightPoint?.y));
+  points.push(new cv.Point(bottomRightPoint?.x, bottomRightPoint?.y));
+  points.push(new cv.Point(bottomLeftPoint?.x, bottomLeftPoint?.y));
+  return points;
+};
+
+const getGuidancePoints = (config: any, width: number, height: number) => {
+  const boxWidth = Math.round(width * (config.documentWidth / 100));
+  const boxHeight = Math.round(height * (config.documentHeight / 100));
+
+  const widthFactor = isMobile ? boxWidth / 2 : boxWidth / 4;
+
+  const heightFactor = boxHeight / 2;
+
+  const topLeft = new cv.Point(
+    width / 2 - widthFactor,
+    height / 2 - heightFactor,
+  );
+  const topRight = new cv.Point(
+    width / 2 + widthFactor,
+    height / 2 - heightFactor,
+  );
+  const bottomLeft = new cv.Point(
+    width / 2 - widthFactor,
+    height / 2 + heightFactor,
+  );
+  const bottomRight = new cv.Point(
+    width / 2 + widthFactor,
+    height / 2 + heightFactor,
+  );
+
+  return [topLeft, topRight, bottomRight, bottomLeft];
+};
+
+const drawGuidanceFrame = (canvas: cv.Mat, points: cv.Point[]) => {
+  const white = [255, 255, 255, 255];
+  cv.rectangle(canvas, points[0], points[2], white, 2);
 };

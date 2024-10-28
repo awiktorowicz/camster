@@ -2,7 +2,7 @@
   "name": "opencv-cam",
   "version": "0.1.0",
   "private": true,
-  "homepage": "https://solidstudio.github.io/camster",
+  "homepage": "https://awiktorowicz.github.io/camster/",
   "dependencies": {
     "@techstark/opencv-js": "^4.10.0-release.1",
     "@testing-library/jest-dom": "^5.17.0",
