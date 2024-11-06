@@ -104,7 +104,8 @@ export const detectDocument = (videoRef: any, canvasRef: any, config: any, updat
     cv.CHAIN_APPROX_SIMPLE,
   );
 
-  const minArea = ((video.height / 2) * video.width) / 4;
+  const minArea = ((video.height / 2) * video.width) / 8;
+  // const minArea = 5000;
   let largestContour = findBiggestContour(contoursVec, minArea);
   let largestContourPoints = getCornerPoints(largestContour);
 

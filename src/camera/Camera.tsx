@@ -11,7 +11,6 @@ import {
 import { captureDocument } from './CaptureDocument';
 
 const Camera = (config: any) => {
-
   const [globalData, setGlobalData] = useGlobalContext();
 
   const videoWrapperRef = React.useRef<HTMLDivElement | null>(null);
@@ -24,7 +23,13 @@ const Camera = (config: any) => {
   const videoConstraints = getVideoConstraints();
 
   const initialiseCanvas = () => {
-    setupCanvasSize(videoRef, canvasRef, canvasWrapperRef, config, updateGuidancePoints);
+    setupCanvasSize(
+      videoRef,
+      canvasRef,
+      canvasWrapperRef,
+      config,
+      updateGuidancePoints,
+    );
   };
 
   const renderVideo = () => {
@@ -49,7 +54,9 @@ const Camera = (config: any) => {
       globalData.autoCapture.isPositionValid,
       updateIsValidArea,
       updateIsValidPosition,
-      guideRef
+      guideRef,
+      config.capturingType,
+      config.capturingMargin,
     );
   };
 

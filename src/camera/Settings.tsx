@@ -10,6 +10,11 @@ const Settings = () => {
 
   const [documentWidthValue, setDocumentWidthValue] = useState(DocPresets.passport.documentWidth);
   const [documentHeightValue, setDocumentHeightValue] = useState(DocPresets.passport.documentHeight);
+
+  const [documentCapturingType, setDocumentCapturingType] = useState('area');
+
+  const [capturingMargin, setCapturingMargin] = useState(10);
+
   const [debugChecked, setDebugChecked] = useState(false);
 
   const [globalData, setGlobalData] = useGlobalContext();
@@ -25,16 +30,17 @@ const Settings = () => {
         config: {
           documentWidth: documentWidthValue,
           documentHeight: documentHeightValue,
-          debug: debugChecked
-        }
-      }
+          capturingType: documentCapturingType,
+          capturingMargin: capturingMargin,
+          debug: debugChecked,
+        },
+      },
     });
     navigate('/camera');
   }
 
   return (
     <div>
-
       <h2>Settings</h2>
 
       <div>
@@ -71,6 +77,32 @@ const Settings = () => {
       </div>
 
       <div>
+        <label htmlFor="detectionMethod">Capturing Method By: </label>
+        <select onChange={(e) => setDocumentCapturingType(e.target.value)}>
+          <option value="area">Area</option>
+          <option value="edges">Side Edges</option>
+        </select>
+      </div>
+
+      {documentCapturingType === 'edges' && (
+        <div>
+          <label htmlFor="capturingMargin">
+            Allowed distance from the sides (0-1)
+          </label>
+          <input
+            type="number"
+            id="capturingMargin"
+            name="capturingMargin"
+            min="0"
+            max="100"
+            value={capturingMargin}
+            onChange={(e) => setCapturingMargin(parseInt(e.target.value))}
+          />
+          %
+        </div>
+      )}
+
+      <div>
         <label htmlFor="debug">debug:</label>
         <input type="checkbox" id="debug" name="debug" onClick={handleDebugClick} defaultChecked={debugChecked} />
       </div>
@@ -79,7 +111,7 @@ const Settings = () => {
         Launch camera
       </button>
 
-  </div>
+    </div>
   );
 }
 export default Settings;
