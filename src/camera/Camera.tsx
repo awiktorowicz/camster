@@ -1,9 +1,10 @@
-import React, { useRef } from 'react';
+import React, { useRef, useState } from 'react';
 import Webcam from 'react-webcam';
-import { useGlobalContext } from '../GlobalContext';
+import ToggleButton from '../compontents/ToggleButton';
+import { useGlobalContext } from '../context/GlobalContext';
+import { runDetection2 } from '../services/detectionService';
 import { animationManager } from './AnimationManger';
 import {
-  detectDocument,
   getVideoConstraints,
   renderVideoToCanvas,
   setupCanvasSize,
@@ -17,6 +18,7 @@ const Camera = (config: any) => {
   const canvasWrapperRef = React.useRef<HTMLDivElement | null>(null);
   const videoRef = React.useRef<Webcam>(null);
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
+  const canvasDebugRef = useRef<HTMLCanvasElement | null>(null);
   const guideRef = React.useRef<HTMLDivElement | null>(null);
   const screenReaderRef = React.useRef<HTMLDivElement | null>(null);
 
@@ -42,9 +44,9 @@ const Camera = (config: any) => {
     );
   };
 
-  const runDetection = () => {
-    detectDocument(videoRef, canvasRef, config, updatePointDetected);
-  };
+  // const runDetection = () => {
+  //   detectDocument(videoRef, canvasRef, config, updatePointDetected);
+  // };
 
   const runCapturing = () => {
     captureDocument(
@@ -84,39 +86,136 @@ const Camera = (config: any) => {
     setGlobalData(globalDataUpdate);
   };
 
+  const updateIsShowingDetectedContour = (isShowing: boolean) => {
+    const globalDataUpdate = globalData;
+    globalDataUpdate.autoCapture.config.debug.isShowingDetectedContour =
+      isShowing;
+    setGlobalData(globalDataUpdate);
+    setIsShowingDetectedContour(isShowing);
+  };
+
+  const updateIsShowingDetectedGlare = (isShowing: boolean) => {
+    const globalDataUpdate = globalData;
+    globalDataUpdate.autoCapture.config.debug = isShowing;
+    setGlobalData(globalDataUpdate);
+    setIsShowingDetectedGlare(isShowing);
+  };
+
   const runScreenReader = () => {
     const guideText = guideRef.current?.innerText;
     const screenReaderText = screenReaderRef.current?.innerText;
 
-    if (screenReaderText !== guideText && screenReaderRef.current && guideRef.current) {
-      screenReaderRef.current && guideText ? screenReaderRef.current.innerText = guideText : screenReaderRef.current.innerText = '';
+    if (
+      screenReaderText !== guideText &&
+      screenReaderRef.current &&
+      guideRef.current
+    ) {
+      screenReaderRef.current && guideText
+        ? (screenReaderRef.current.innerText = guideText)
+        : (screenReaderRef.current.innerText = '');
     }
-  }
+  };
 
   const videoStarted = () => {
     // seems to have issues on ios without delay
     setTimeout(() => {
       initialiseCanvas();
       animationManager.registerTask(renderVideo, 60);
-      animationManager.registerTask(runDetection, 10);
+      animationManager.registerTask(
+        () => runDetection2(videoRef, canvasDebugRef, config),
+        20,
+      );
       animationManager.registerTask(runCapturing, 2);
       animationManager.registerTask(runScreenReader, 10);
     }, 2000);
-  }
+  };
+
+  // Debug properties states
+  const [isShowingDetectedContour, setIsShowingDetectedContour] = useState(
+    config.debug.isShowingDetectedContour,
+  );
+  const [isShowingDetectedGlare, setIsShowingDetectedGlare] = useState(
+    config.debug.isShowingDetectedGlare,
+  );
 
   return (
     <div>
-      <div style={{position: 'relative'}}>
-        <div ref={videoWrapperRef}><Webcam videoConstraints={videoConstraints} ref={videoRef} onUserMedia={videoStarted} style={{position: 'absolute'}} /></div>
-        <div ref={canvasWrapperRef} style={{position: 'relative'}}>
-          <canvas id="canvasOutput" ref={canvasRef} style={{position: 'absolute'}}></canvas>
-          <div ref={guideRef} id="guidance" style={{position: 'absolute', color: "white", textAlign: "center", bottom: "40px", width: "100%"}}>Position document inside boundary</div>
-          <div ref={screenReaderRef} role="alert" style={{clipPath: 'inset(50%)', height: '1px', overflow: 'hidden', position: 'absolute', whiteSpace: 'nowrap', width: '1px'}}>Position document inside boundary</div>
+      <div style={{ position: 'relative' }}>
+        <nav>
+          <ToggleButton
+            name="Contour"
+            state={isShowingDetectedContour}
+            onButtonClick={(e) => {
+              updateIsShowingDetectedContour(!e);
+            }}
+          />
+          <ToggleButton
+            name="Glare"
+            state={isShowingDetectedGlare}
+            onButtonClick={(e) => updateIsShowingDetectedGlare(!e)}
+          />
+        </nav>
+
+        <div ref={videoWrapperRef}>
+          <Webcam
+            videoConstraints={videoConstraints}
+            ref={videoRef}
+            onUserMedia={videoStarted}
+            style={{ position: 'absolute' }}
+          />
+        </div>
+        <div
+          ref={canvasWrapperRef}
+          style={{ position: 'relative' }}
+        >
+          {/* Video canvas */}
+          <canvas
+            id="canvasOutput"
+            ref={canvasRef}
+            style={{ position: 'absolute' }}
+          ></canvas>
+
+          {/* Guidance frame + debug canvas */}
+          <canvas
+            id="canvasDebug"
+            ref={canvasDebugRef}
+            style={{ position: 'absolute' }}
+          ></canvas>
+
+          <div
+            ref={guideRef}
+            id="guidance"
+            style={{
+              position: 'absolute',
+              color: 'white',
+              textAlign: 'center',
+              bottom: '40px',
+              width: '100%',
+            }}
+          >
+            Position document inside boundary
+          </div>
+          <div
+            ref={screenReaderRef}
+            role="alert"
+            style={{
+              clipPath: 'inset(50%)',
+              height: '1px',
+              overflow: 'hidden',
+              position: 'absolute',
+              whiteSpace: 'nowrap',
+              width: '1px',
+            }}
+          >
+            Position document inside boundary
+          </div>
         </div>
       </div>
-      <div style={{position: 'relative'}}><a href="/camster">Back to settings</a></div>
+      <div style={{ position: 'relative' }}>
+        <a href="/camster">Back to settings</a>
+      </div>
     </div>
   );
-}
+};
 
 export default Camera;

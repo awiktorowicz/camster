@@ -1,20 +1,25 @@
-import React from "react";
-import { HashRouter , Routes, Route } from "react-router-dom";
-import GlobalContextProvider from "./GlobalContext";
-import Settings from "./camera/Settings";
-import CameraWrapper from "./camera/CameraWrapper";
+import { HashRouter, Route, Routes } from 'react-router-dom';
+import CameraWrapper from './camera/CameraWrapper';
+import Settings from './camera/Settings';
+import GlobalContextProvider from './context/GlobalContext';
 
-const App = () =>  {
+const App = () => {
   return (
-      <HashRouter>
-        <GlobalContextProvider>
-          <Routes>
-            <Route path="/" element={ <Settings /> }></Route>
-            <Route path="/camera" element={<CameraWrapper/>}/>
-          </Routes>
-        </GlobalContextProvider>
-      </HashRouter>
+    <HashRouter>
+      <GlobalContextProvider>
+        <Routes>
+          <Route
+            path="/"
+            element={<Settings />}
+          ></Route>
+          <Route
+            path="/camera"
+            element={<CameraWrapper />}
+          />
+        </Routes>
+      </GlobalContextProvider>
+    </HashRouter>
   );
-}
+};
 
 export default App;
