@@ -1,16 +1,19 @@
-import React, { useRef, useState } from 'react';
+import React, { useRef } from 'react';
 import Webcam from 'react-webcam';
-import ToggleButton from '../compontents/ToggleButton';
 import { useGlobalContext } from '../context/GlobalContext';
-import { runDetection2 } from '../services/detectionService';
+import { runDetection } from '../services/detectionService';
+import {
+  GuidanceService,
+  ValidationService,
+} from '../services/validationService';
 import { animationManager } from './AnimationManger';
 import {
   getVideoConstraints,
   renderVideoToCanvas,
   setupCanvasSize,
 } from './CameraUtils';
-import { captureDocument } from './CaptureDocument';
 
+// TODO: Camera does not need config param, this can be accessed from the global Data
 const Camera = (config: any) => {
   const [globalData, setGlobalData] = useGlobalContext();
 
@@ -29,77 +32,81 @@ const Camera = (config: any) => {
       videoRef,
       canvasRef,
       canvasWrapperRef,
-      config,
-      updateGuidancePoints,
+      globalData.autoCapture,
+      setGlobalData,
     );
   };
 
   const renderVideo = () => {
-    renderVideoToCanvas(
-      videoRef,
-      canvasRef,
-      config,
-      globalData.autoCapture.guidancePoints,
-      globalData.autoCapture.lastDetectedPoints,
-    );
+    renderVideoToCanvas(videoRef, canvasRef, globalData.autoCapture);
+  };
+
+  const guidanceSercice = new GuidanceService(guideRef);
+  const validationService = new ValidationService(
+    globalData.autoCapture,
+    guidanceSercice,
+  );
+
+  const runValidations = () => {
+    validationService.validateFeatures(globalData.autoCapture.detectionResults);
   };
 
   // const runDetection = () => {
   //   detectDocument(videoRef, canvasRef, config, updatePointDetected);
   // };
 
-  const runCapturing = () => {
-    captureDocument(
-      globalData.autoCapture.guidancePoints,
-      globalData.autoCapture.lastDetectedPoints,
-      globalData.autoCapture.isAreaValid,
-      globalData.autoCapture.isPositionValid,
-      updateIsValidArea,
-      updateIsValidPosition,
-      guideRef,
-      config.capturingType,
-      config.capturingMargin,
-    );
-  };
+  // const runCapturing = () => {
+  //   captureDocument(
+  //     globalData.autoCapture.guidancePoints,
+  //     globalData.autoCapture.lastDetectedPoints,
+  //     globalData.autoCapture.isAreaValid,
+  //     globalData.autoCapture.isPositionValid,
+  //     updateIsValidArea,
+  //     updateIsValidPosition,
+  //     guideRef,
+  //     config.capturingType,
+  //     config.capturingMargin,
+  //   );
+  // };
 
-  const updatePointDetected = (points: any) => {
-    const globalDataUpdate = globalData;
-    globalDataUpdate.autoCapture.lastDetectedPoints = points;
-    setGlobalData(globalDataUpdate);
-  };
+  // const updatePointDetected = (points: any) => {
+  //   const globalDataUpdate = globalData;
+  //   globalDataUpdate.autoCapture.lastDetectedPoints = points;
+  //   setGlobalData(globalDataUpdate);
+  // };
 
-  const updateGuidancePoints = (points: any) => {
-    const globalDataUpdate = globalData;
-    globalDataUpdate.autoCapture.guidancePoints = points;
-    setGlobalData(globalDataUpdate);
-  };
+  // const updateGuidancePoints = (points: any) => {
+  //   const globalDataUpdate = globalData;
+  //   globalDataUpdate.autoCapture.guidancePoints = points;
+  //   setGlobalData(globalDataUpdate);
+  // };
 
-  const updateIsValidArea = (isValid: boolean) => {
-    const globalDataUpdate = globalData;
-    globalDataUpdate.autoCapture.isAreaValid = isValid;
-    setGlobalData(globalDataUpdate);
-  };
+  // const updateIsValidArea = (isValid: boolean) => {
+  //   const globalDataUpdate = globalData;
+  //   globalDataUpdate.autoCapture.isAreaValid = isValid;
+  //   setGlobalData(globalDataUpdate);
+  // };
 
-  const updateIsValidPosition = (isValid: boolean) => {
-    const globalDataUpdate = globalData;
-    globalDataUpdate.autoCapture.isPositionValid = isValid;
-    setGlobalData(globalDataUpdate);
-  };
+  // const updateIsValidPosition = (isValid: boolean) => {
+  //   const globalDataUpdate = globalData;
+  //   globalDataUpdate.autoCapture.isPositionValid = isValid;
+  //   setGlobalData(globalDataUpdate);
+  // };
 
-  const updateIsShowingDetectedContour = (isShowing: boolean) => {
-    const globalDataUpdate = globalData;
-    globalDataUpdate.autoCapture.config.debug.isShowingDetectedContour =
-      isShowing;
-    setGlobalData(globalDataUpdate);
-    setIsShowingDetectedContour(isShowing);
-  };
+  // const updateIsShowingDetectedContour = (isShowing: boolean) => {
+  //   const globalDataUpdate = globalData;
+  //   globalDataUpdate.autoCapture.config.debug.isShowingDetectedContour =
+  //     isShowing;
+  //   setGlobalData(globalDataUpdate);
+  //   setIsShowingDetectedContour(isShowing);
+  // };
 
-  const updateIsShowingDetectedGlare = (isShowing: boolean) => {
-    const globalDataUpdate = globalData;
-    globalDataUpdate.autoCapture.config.debug = isShowing;
-    setGlobalData(globalDataUpdate);
-    setIsShowingDetectedGlare(isShowing);
-  };
+  // const updateIsShowingDetectedGlare = (isShowing: boolean) => {
+  //   const globalDataUpdate = globalData;
+  //   globalDataUpdate.autoCapture.config.debug = isShowing;
+  //   setGlobalData(globalDataUpdate);
+  //   setIsShowingDetectedGlare(isShowing);
+  // };
 
   const runScreenReader = () => {
     const guideText = guideRef.current?.innerText;
@@ -121,41 +128,28 @@ const Camera = (config: any) => {
     setTimeout(() => {
       initialiseCanvas();
       animationManager.registerTask(renderVideo, 60);
+      // !! BUG: detection canvas renders the whole video instead of just the detection bits
+
       animationManager.registerTask(
-        () => runDetection2(videoRef, canvasDebugRef, config),
-        20,
+        () =>
+          runDetection(
+            videoRef,
+            canvasDebugRef,
+            globalData.autoCapture,
+            setGlobalData,
+          ),
+        10,
       );
-      animationManager.registerTask(runCapturing, 2);
-      animationManager.registerTask(runScreenReader, 10);
+      // animationManager.registerTask(runCapturing, 2);
+      // !! The timing of validation should match timing of the continous position validation. for example runValidation,10 = vlidatePositionContinously, 100. This gives the best real time output.
+      animationManager.registerTask(runValidations, 10);
+      // animationManager.registerTask(runScreenReader, 10);
     }, 2000);
   };
-
-  // Debug properties states
-  const [isShowingDetectedContour, setIsShowingDetectedContour] = useState(
-    config.debug.isShowingDetectedContour,
-  );
-  const [isShowingDetectedGlare, setIsShowingDetectedGlare] = useState(
-    config.debug.isShowingDetectedGlare,
-  );
 
   return (
     <div>
       <div style={{ position: 'relative' }}>
-        <nav>
-          <ToggleButton
-            name="Contour"
-            state={isShowingDetectedContour}
-            onButtonClick={(e) => {
-              updateIsShowingDetectedContour(!e);
-            }}
-          />
-          <ToggleButton
-            name="Glare"
-            state={isShowingDetectedGlare}
-            onButtonClick={(e) => updateIsShowingDetectedGlare(!e)}
-          />
-        </nav>
-
         <div ref={videoWrapperRef}>
           <Webcam
             videoConstraints={videoConstraints}

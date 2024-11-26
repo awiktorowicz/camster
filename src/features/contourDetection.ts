@@ -1,61 +1,76 @@
 import cv from '@techstark/opencv-js';
 import { getCornerPoints } from '../camera/CameraUtils';
+import {
+  AutoCaptureConfig,
+  ContourDetectionConfig,
+} from '../context/AutoCaptureConfig';
 import { IFeature } from './IFeature';
 
 class ContourDetection implements IFeature {
-  config: any;
+  config: ContourDetectionConfig;
+  autoCaptureConfig: AutoCaptureConfig;
 
-  private _detectedContours: cv.Point[] | null = null;
-
-  constructor(config: any) {
-    this.config = config;
+  constructor(config: AutoCaptureConfig) {
+    this.config = config.features.find(
+      (f) => f.factoryName === 'contour',
+    ) as ContourDetectionConfig;
+    this.autoCaptureConfig = config;
   }
 
   validate(imageData: cv.Mat): {
     isValid: boolean;
-    error: string | null;
   } {
-    this._detectedContours = this.detectDocument(imageData);
-
-    return this._detectedContours
-      ? { isValid: true, error: null }
-      : { isValid: false, error: 'No contours detected.' };
+    this.config.detectedContour = this.detectDocument(imageData);
+    return this.config.detectedContour ? { isValid: true } : { isValid: false };
   }
 
-  // TODO: Can a function use a private proprty directly in the body?
   // TODO: Change the canvas type from any
   draw(canvas: any | null): void {
-    if (!canvas || !this._detectedContours) {
+    if (!canvas || !this.config.detectedContour) {
       return;
     }
 
     let contour = new cv.MatVector();
     let pointArray = cv.matFromArray(
-      this._detectedContours.length,
+      this.config.detectedContour.length,
       1,
       cv.CV_32SC2,
-      this._detectedContours.flatMap((p) => [p.x, p.y]),
+      this.config.detectedContour.flatMap((p) => [p.x, p.y]),
     );
 
     contour.push_back(pointArray);
 
-    const isClosed = true;
-    const color = new cv.Scalar(255, 0, 0, 255);
-    const thickness = 2;
-
-    cv.polylines(canvas, contour, isClosed, color, thickness);
+    cv.polylines(
+      canvas,
+      contour,
+      this.config.draw.isClosed,
+      this.config.draw.color,
+      this.config.draw.thickness,
+    );
 
     pointArray.delete();
     contour.delete();
   }
 
-  getFeedback(): string {
-    return 'contour feedback.';
+  getFeedback(isValid: boolean): string {
+    return isValid
+      ? 'Contour detected'
+      : 'Position your "DOCUMENT" in the frame.';
   }
 
-  release(): void {
+  updateConfig(setFunction: any): void {
     // throw new Error('Method not implemented.');
+    setFunction({
+      ...this.autoCaptureConfig.features.find(
+        (f) => f.factoryName === 'contour',
+      ),
+      ...this.config,
+    });
   }
+  // ?? Potential idea is to create all required MATs in the constructor and delete them using the release function.
+  // release(): void {
+  //   // throw new Error('Method not implemented.');
+  // }
 
   private detectDocument(imageData: cv.Mat): cv.Point[] | null {
     this.preprocessImage(imageData);
@@ -76,13 +91,11 @@ class ContourDetection implements IFeature {
       cv.CHAIN_APPROX_SIMPLE,
     );
 
-    // TODO: What to do with the min area
-    // const minArea = ((video.height / 2) * video.width) / 8;
-    const minArea = 5000;
-    let largestContour = this.findBiggestContour(contoursVec, minArea);
+    let largestContour = this.findBiggestContour(
+      contoursVec,
+      this.config.minimumDetectableArea,
+    );
     let largestContourPoints = getCornerPoints(largestContour);
-
-    // updatePointDetected(largestContourPoints);
 
     hierarchy.delete();
     contoursVec.delete();

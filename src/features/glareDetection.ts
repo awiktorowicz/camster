@@ -2,11 +2,11 @@ import cv from '@techstark/opencv-js';
 import { IFeature } from './IFeature';
 
 class GlareDetection implements IFeature {
+  updateConfig(): void {
+    throw new Error('Method not implemented.');
+  }
   config: any;
 
-  release(): void {
-    // throw new Error('Method not implemented.');
-  }
   private _detectedGlare: cv.MatVector = new cv.MatVector();
 
   validate(imageData: cv.Mat): { isValid: boolean; error: string | null } {
