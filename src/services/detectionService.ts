@@ -1,23 +1,20 @@
 import cv from '@techstark/opencv-js';
 import Webcam from 'react-webcam';
+import {
+  AutoCaptureConfig,
+  DetectionResult,
+} from '../context/AutoCaptureConfig';
 import { createFeature } from '../features/featureFactory';
 
-type DetectionResult = {
-  type: string;
-  feedback: string;
-};
-
-//TODO: How to get access to the globalContext? Pass congif as a class parameter
-let debug = true;
-
-export const runDetection2 = (
+export const runDetection = (
   videoRef: React.RefObject<Webcam>,
   // TODO: change type from any
   canvasRef: any,
-  config: any,
-): DetectionResult[] => {
-  // Get height and width of the video
+  autoCaptureConfig: AutoCaptureConfig,
+  setGlobalData: any,
+) => {
   // TODO: Check how this part of code can be done better
+  // Get height and width of the video
   if (!videoRef?.current?.video) {
     return [{ type: 'video', feedback: 'Video not detected.' }];
   }
@@ -25,50 +22,70 @@ export const runDetection2 = (
   videoRef.current.video.width = videoRef.current.video.videoWidth;
   videoRef.current.video.height = videoRef.current.video.videoHeight;
 
-  // Get an image from the camera
+  // // Get an image from the camera
   const src = new cv.Mat(
     videoRef.current.video.height,
     videoRef.current.video.width,
     cv.CV_8UC4,
   );
-  let cap = new cv.VideoCapture(videoRef.current.video);
-  cap.read(src);
+  // let cap = new cv.VideoCapture(videoRef.current.video);
+  // cap.read(src);
 
   // Create debug mat
   // TODO: Should be created only in the debug mode. A function (handler) creating/deleting can be created.
+
   let drawMat = new cv.Mat(
     videoRef.current.video.height,
     videoRef.current.video.width,
     cv.CV_8UC4,
   );
 
-  // TODO: Consider passing features as a parameter
-  const featuresToUse = ['contour'];
+  // Clean canvas
+  const context = canvasRef.current.getContext('2d');
+  context.clearRect(0, 0, 1000, 1000);
+
+  const featuresToUse = autoCaptureConfig.activeFeatures;
   const detectionResults: DetectionResult[] = [];
 
   featuresToUse.forEach((featuresType) => {
     // Clone of the source is created because each feature would edit it since it is passed by ref
     let srcClone = src.clone();
-    const feature = createFeature(featuresType, config);
-    const result = feature.validate(srcClone);
-    feature.release();
+    const feature = createFeature(
+      featuresType,
+      autoCaptureConfig,
+      setGlobalData, // !! Is not needed anymore
+    );
 
-    if (debug) {
+    const result = feature.validate(srcClone);
+    srcClone.delete();
+
+    feature.updateConfig(setGlobalData);
+
+    // console.log(autoCaptureConfig);
+    // debugger;
+
+    if (autoCaptureConfig.debug) {
       feature.draw(drawMat);
     }
 
-    // if (!result.isValid) {
-    //   detectionResults.push({
-    //     type: featuresType,
-    //     feedback: feature.getFeedback(),
-    //   });
-    // }
-    srcClone.delete();
+    detectionResults.push({
+      type: featuresType,
+      isValid: result.isValid,
+      feedback: feature.getFeedback(result.isValid),
+    });
   });
 
   cv.imshow(canvasRef.current, drawMat);
+
   // Clean resources
   src.delete();
   drawMat.delete();
-  return detectionResults;
+
+  autoCaptureConfig.detectionResults.splice(
+    0,
+    autoCaptureConfig.detectionResults.length,
+    ...detectionResults,
+  );
+
+  setGlobalData({ autoCaptureConfig });
 };

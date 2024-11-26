@@ -1,4 +1,5 @@
 import React, { createContext, useState } from 'react';
+import { GlobalData } from './GlobalData';
 
 export const GlobalContext = createContext<any | null>(null);
 export const useGlobalContext = (): any => React.useContext(GlobalContext);
@@ -8,7 +9,7 @@ interface PostsContextProviderProps {
 }
 
 const GlobalContextProvider = ({ children }: PostsContextProviderProps) => {
-  const [globalData, setGlobalData] = useState<any | null>();
+  const [globalData, setGlobalData] = useState<GlobalData | null>();
   return (
     <GlobalContext.Provider value={[globalData, setGlobalData]}>
       {children}

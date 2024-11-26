@@ -1,20 +1,18 @@
 import React, { Suspense, useEffect } from 'react';
 import { useGlobalContext } from '../context/GlobalContext';
-import DocPresets from './docPresets';
+import { InitialConfig } from '../context/initialValues/initialConfig';
 
 const Camera = React.lazy(() => import('./Camera'));
 
 const CameraWrapper = () => {
   let [globalData, setGlobalData] = useGlobalContext();
+
   if (!globalData) {
-    globalData = {
-      autoCapture: {
-        config: DocPresets.test,
-      },
-    };
-  } else if (!globalData.autoCapture) {
-    globalData.autoCapture.config = DocPresets.test;
+    globalData = { autoCapture: { ...InitialConfig } };
   }
+  //  else if (!globalData.autoCapture) {
+  //   globalData.autoCapture = { ...InitialConfig };
+  // }
 
   useEffect(() => {
     setGlobalData(globalData);
@@ -23,7 +21,7 @@ const CameraWrapper = () => {
   return (
     <div>
       <Suspense fallback={<div>loading</div>}>
-        {<Camera {...globalData.autoCapture.config} />}
+        {<Camera {...globalData.autoCapture} />}
       </Suspense>
     </div>
   );

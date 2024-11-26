@@ -4,9 +4,8 @@ export interface IFeature {
   config: any;
   validate(imageData: cv.Mat): {
     isValid: boolean;
-    error: string | null;
   };
   draw(canvas: any | null): void;
-  getFeedback(): string;
-  release(): void;
+  getFeedback(isValid: boolean): string;
+  updateConfig(setFunction: any): void;
 }
