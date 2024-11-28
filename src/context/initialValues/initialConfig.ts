@@ -47,7 +47,7 @@ export const InitialConfig: AutoCaptureConfig = {
   detectionResults: [],
 
   validation: {
-    sideDetectionMargin: 30,
+    sideDetectionMargin: 20,
     holdingTime: 2000,
   },
 };
