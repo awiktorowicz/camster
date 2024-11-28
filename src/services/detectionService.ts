@@ -28,8 +28,8 @@ export const runDetection = (
     videoRef.current.video.width,
     cv.CV_8UC4,
   );
-  // let cap = new cv.VideoCapture(videoRef.current.video);
-  // cap.read(src);
+  let cap = new cv.VideoCapture(videoRef.current.video);
+  cap.read(src);
 
   // Create debug mat
   // TODO: Should be created only in the debug mode. A function (handler) creating/deleting can be created.

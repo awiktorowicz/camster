@@ -138,7 +138,7 @@ const Camera = (config: any) => {
             globalData.autoCapture,
             setGlobalData,
           ),
-        10,
+        20,
       );
       // animationManager.registerTask(runCapturing, 2);
       // !! The timing of validation should match timing of the continous position validation. for example runValidation,10 = vlidatePositionContinously, 100. This gives the best real time output.
