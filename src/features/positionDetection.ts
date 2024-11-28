@@ -10,6 +10,17 @@ enum ZoomAction {
   None,
   ZoomIn,
   ZoomOut,
+  MoveUp,
+  MoveDown,
+  MoveLeft,
+  MoveRight,
+}
+
+interface GuidanceBounds {
+  minX: number;
+  maxX: number;
+  minY: number;
+  maxY: number;
 }
 
 export class PositionDetection implements IFeature {
@@ -18,14 +29,19 @@ export class PositionDetection implements IFeature {
   config: any; // ????
 
   private zoomAction: ZoomAction;
+  private guidanceBounds: GuidanceBounds | null;
+  private detectedBounds: GuidanceBounds | null;
 
   constructor(config: AutoCaptureConfig) {
-    // console.log(config);
     this.autoCaptureConfig = config;
     this.contourDetectionConfig = this.autoCaptureConfig.features.find(
       (f) => f.factoryName === 'contour',
     ) as ContourDetectionConfig;
     this.zoomAction = ZoomAction.Problem;
+    this.guidanceBounds = this.getBounds(this.autoCaptureConfig.guidancePoints);
+    this.detectedBounds = this.getBounds(
+      this.contourDetectionConfig.detectedContour,
+    );
   }
 
   // TODO:: Rewrite this spaghetti
@@ -58,6 +74,29 @@ export class PositionDetection implements IFeature {
       }
     }
 
+    if (!this.detectedBounds || !this.guidanceBounds) return { isValid: false };
+
+    if (this.detectedBounds.minX < this.guidanceBounds.minX) {
+      this.zoomAction = ZoomAction.MoveLeft;
+      return { isValid: false };
+    }
+
+    if (this.detectedBounds.maxX > this.guidanceBounds.maxX) {
+      this.zoomAction = ZoomAction.MoveRight;
+      return { isValid: false };
+    }
+
+    // Check up-down
+    if (this.detectedBounds.minY < this.guidanceBounds.minY) {
+      this.zoomAction = ZoomAction.MoveUp;
+      return { isValid: false };
+    }
+
+    if (this.detectedBounds.maxY > this.guidanceBounds.maxY) {
+      this.zoomAction = ZoomAction.MoveDown;
+      return { isValid: false };
+    }
+
     this.zoomAction = ZoomAction.None;
     return { isValid: true };
   }
@@ -65,12 +104,19 @@ export class PositionDetection implements IFeature {
     // throw new Error("Method not implemented.");
   }
   getFeedback(isValid: boolean): string {
-    // throw new Error('Method not implemented.');
     switch (this.zoomAction) {
       case ZoomAction.ZoomIn:
         return 'Zoom in on the "DOCUMENT"';
       case ZoomAction.ZoomOut:
         return 'Zoom out of the "DOCUMENT"';
+      case ZoomAction.MoveLeft:
+        return 'Move the camera to the left';
+      case ZoomAction.MoveRight:
+        return 'Move the camera to the right';
+      case ZoomAction.MoveUp:
+        return 'Move the camera up';
+      case ZoomAction.MoveDown:
+        return 'Move the camera down';
       case ZoomAction.None:
         return '"Document" in the correct position';
       case ZoomAction.Problem:
@@ -136,5 +182,16 @@ export class PositionDetection implements IFeature {
     );
 
     return numerator / denominator;
+  };
+
+  private getBounds = (points: cv.Point[] | null) => {
+    if (!points) return null;
+
+    const minX = Math.min(...points.map((point) => point.x));
+    const maxX = Math.max(...points.map((point) => point.x));
+    const minY = Math.min(...points.map((point) => point.y));
+    const maxY = Math.max(...points.map((point) => point.y));
+
+    return { minX, maxX, minY, maxY };
   };
 }
