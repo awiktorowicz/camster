@@ -1,19 +1,19 @@
 {
   "files": {
     "main.css": "/camster/static/css/main.e6c13ad2.css",
-    "main.js": "/camster/static/js/main.728b2427.js",
-    "static/js/888.eb5a7505.chunk.js": "/camster/static/js/888.eb5a7505.chunk.js",
+    "main.js": "/camster/static/js/main.cae6815a.js",
+    "static/js/958.b00b1898.chunk.js": "/camster/static/js/958.b00b1898.chunk.js",
     "static/js/453.92c3c3dc.chunk.js": "/camster/static/js/453.92c3c3dc.chunk.js",
     "static/js/956.bbfcfe6f.chunk.js": "/camster/static/js/956.bbfcfe6f.chunk.js",
     "index.html": "/camster/index.html",
     "main.e6c13ad2.css.map": "/camster/static/css/main.e6c13ad2.css.map",
-    "main.728b2427.js.map": "/camster/static/js/main.728b2427.js.map",
-    "888.eb5a7505.chunk.js.map": "/camster/static/js/888.eb5a7505.chunk.js.map",
+    "main.cae6815a.js.map": "/camster/static/js/main.cae6815a.js.map",
+    "958.b00b1898.chunk.js.map": "/camster/static/js/958.b00b1898.chunk.js.map",
     "453.92c3c3dc.chunk.js.map": "/camster/static/js/453.92c3c3dc.chunk.js.map",
     "956.bbfcfe6f.chunk.js.map": "/camster/static/js/956.bbfcfe6f.chunk.js.map"
   },
   "entrypoints": [
     "static/css/main.e6c13ad2.css",
-    "static/js/main.728b2427.js"
+    "static/js/main.cae6815a.js"
   ]
 }
