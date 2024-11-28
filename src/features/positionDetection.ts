@@ -101,7 +101,50 @@ export class PositionDetection implements IFeature {
     return { isValid: true };
   }
   draw(canvas: any | null): void {
-    // throw new Error("Method not implemented.");
+    if (!canvas || !this.autoCaptureConfig.guidancePoints) return;
+
+    const margin = this.autoCaptureConfig.validation.sideDetectionMargin;
+    const width =
+      this.autoCaptureConfig.guidancePoints[1].x -
+      this.autoCaptureConfig.guidancePoints[0].x;
+
+    const distanceFromBorder = (width * margin) / 100;
+
+    const leftLineStartPoint = new cv.Point(
+      this.autoCaptureConfig.guidancePoints[0].x + distanceFromBorder,
+      this.autoCaptureConfig.guidancePoints[0].y,
+    );
+
+    const leftLineEndPoint = new cv.Point(
+      this.autoCaptureConfig.guidancePoints[0].x + distanceFromBorder,
+      this.autoCaptureConfig.guidancePoints[3].y,
+    );
+
+    const rightLineStartPoint = new cv.Point(
+      this.autoCaptureConfig.guidancePoints[1].x - distanceFromBorder,
+      this.autoCaptureConfig.guidancePoints[0].y,
+    );
+
+    const rightLineEndPoint = new cv.Point(
+      this.autoCaptureConfig.guidancePoints[1].x - distanceFromBorder,
+      this.autoCaptureConfig.guidancePoints[3].y,
+    );
+
+    cv.line(
+      canvas,
+      leftLineStartPoint,
+      leftLineEndPoint,
+      new cv.Scalar(0, 255, 0, 255),
+      2,
+    );
+
+    cv.line(
+      canvas,
+      rightLineStartPoint,
+      rightLineEndPoint,
+      new cv.Scalar(0, 255, 0, 255),
+      2,
+    );
   }
   getFeedback(isValid: boolean): string {
     switch (this.zoomAction) {

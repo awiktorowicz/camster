@@ -58,7 +58,7 @@ const Settings = () => {
   };
 
   // Validation
-  const [sideDetectionMargin, setSideDetectionMargin] = useState<number>(10);
+  const [sideDetectionMargin, setSideDetectionMargin] = useState<number>(20);
   const [holdingTime, setHoldingTime] = useState<number>(2000);
 
   // Debug mode
