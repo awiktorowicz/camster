@@ -1,6 +1,6 @@
 import { HashRouter, Route, Routes } from 'react-router-dom';
-import CameraWrapper from './camera/CameraWrapper';
-import Settings from './camera/Settings';
+import CameraWrapper from './pages/CameraWrapper';
+import Settings from './pages/Settings';
 import GlobalContextProvider from './context/GlobalContext';
 
 const App = () => {
