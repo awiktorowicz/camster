@@ -9,7 +9,7 @@ interface PostsContextProviderProps {
 }
 
 const GlobalContextProvider = ({ children }: PostsContextProviderProps) => {
-  const [globalData, setGlobalData] = useState<GlobalData | null>();
+  const [globalData, setGlobalData] = useState<GlobalData | null>({ test: 'hello', autoCapture: { detectionFrameWidth: 75, detectionFrameHeight: 75 } });
   return (
     <GlobalContext.Provider value={[globalData, setGlobalData]}>
       {children}

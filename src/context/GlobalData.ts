@@ -1,5 +1,4 @@
-import { AutoCaptureConfig } from './AutoCaptureConfig';
-
 export interface GlobalData {
-  autoCapture: AutoCaptureConfig;
+  test: any;
+  autoCapture: any;
 }
