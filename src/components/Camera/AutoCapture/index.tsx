@@ -49,7 +49,8 @@ const AutoCapture = forwardRef<any, AutoCaptureProps>(({
   };
 
   const detectDocument = () => {
-    const largestPointsDetected = detectDocumentPoints(canvasRef);
+      const largestPointsDetected = detectDocumentPoints(videoRef);
+
     if (largestPointsDetected?.length === 4) {
       detectedPoints = largestPointsDetected;
       const isValid = validatePoints(detectedPoints, guidancePoints);
