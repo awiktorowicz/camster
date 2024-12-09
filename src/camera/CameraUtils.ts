@@ -271,37 +271,7 @@ const getGuidancePoints = (config: any, width: number, height: number) => {
   return [topLeft, topRight, bottomRight, bottomLeft];
 };
 
-const drawGuidanceFrame = (
-  canvas: cv.Mat,
-  points: cv.Point[],
-  backgroundIntensity = 150,
-) => {
-  let mask: cv.Mat | null = null;
-  let roi: cv.Mat | null = null;
-
-  // Create a mask
-  mask = new cv.Mat(canvas.rows, canvas.cols, cv.CV_8UC4);
-  const semiTransparent = new cv.Scalar(0, 0, 0, backgroundIntensity);
-  mask.setTo(semiTransparent);
-
-  // Create a region of interest
-  const rect = new cv.Rect(
-    points[0].x,
-    points[0].y,
-    points[2].x - points[0].x,
-    points[2].y - points[0].y,
-  );
-
-  roi = mask.roi(rect);
-  roi.setTo(new cv.Scalar(0, 0, 0, 0));
-
-  // Blend the mask and canvas
-  cv.addWeighted(mask, 1, canvas, 0, 0, canvas);
-
-  // Draw the guidance frame
+const drawGuidanceFrame = (canvas: cv.Mat, points: cv.Point[]) => {
   const white = [255, 255, 255, 255];
   cv.rectangle(canvas, points[0], points[2], white, 2);
-
-  if (roi) roi.delete();
-  if (mask) mask.delete();
 };
