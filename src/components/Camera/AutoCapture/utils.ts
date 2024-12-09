@@ -74,9 +74,14 @@ export const renderVideoToCanvas = (
   }
 };
 
-export const detectDocumentPoints = (canvasRef: any) => {
-  
-  let src = cv.imread(canvasRef.current);
+export const detectDocumentPoints = (videoRef: any) => {
+  const video = videoRef.current.video;
+  video.height = video.videoHeight;
+  video.width = video.videoWidth;
+  const cap = new cv.VideoCapture(video);
+  const src = new cv.Mat(video.height, video.width, cv.CV_8UC4);
+  cap.read(src);
+
   cv.cvtColor(src, src, cv.COLOR_RGBA2GRAY);
 
   // Apply gaussian blur
